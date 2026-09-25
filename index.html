@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareRx - Humanitarian Medicine Stock & FDA Registry</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Fuse.js for Fuzzy Search & Typo Tolerance -->
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Decorative Gradient Glow -->
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-64 bg-emerald-600/10 blur-[130px] pointer-events-none -z-10"></div>
+
+  <!-- Header & Navigation -->
+  <header class="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/>
+          </svg>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">CareRx</span>
+          <span class="text-xs ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-medium">Humanitarian Stock</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4 text-xs text-slate-400">
+        <div class="hidden sm:flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>openFDA Live Gateway</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center">
+    
+    <!-- Hero / Headline -->
+    <div class="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mb-3">
+        Check Drug Availability & Expiration
+      </h1>
+      <p class="text-sm sm:text-base text-slate-400">
+        Instant real-time stock lookup with FEFO expiry tracking for donated medicine triage.
+      </p>
+    </div>
+
+    <!-- Search Section (Big, Prominent, Center) -->
+    <div class="w-full max-w-2xl relative mb-10 z-30">
+      <div class="relative group">
+        <!-- Input Glow -->
+        <div class="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur opacity-25 group-focus-within:opacity-75 transition duration-300"></div>
+        
+        <div class="relative flex items-center bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="pl-4 sm:pl-5 text-slate-400 pointer-events-none">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 105.65 5.65a7.5 7.5 0 0010.7 10.7z"/>
+            </svg>
+          </div>
+          <input 
+            type="text" 
+            id="drug-search-input" 
+            placeholder="Search medicine (e.g. Amoxicillin, Metformin, Lipitor)..." 
+            autocomplete="off"
+            class="w-full py-4 sm:py-5 pl-3 pr-12 bg-transparent text-white text-base sm:text-lg focus:outline-none placeholder:text-slate-500"
+          />
+          <button id="clear-search-btn" class="hidden pr-4 text-slate-500 hover:text-slate-300">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real-time Fuzzy Search Dropdown -->
+      <div 
+        id="search-dropdown" 
+        class="hidden absolute top-full left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur-xl border border-slate-700 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-800/80 max-h-96 overflow-y-auto"
+      >
+        <!-- Injected via JavaScript -->
+      </div>
+      
+      <!-- Quick Filter Pills -->
+      <div class="flex flex-wrap items-center justify-center gap-2 mt-4 text-xs text-slate-400">
+        <span class="text-slate-500">Suggested:</span>
+        <button class="quick-pill hover:text-emerald-400 bg-slate-800/70 border border-slate-700 px-2.5 py-1 rounded-full transition" data-name="Amoxicillin">Amoxicillin (10 in stock)</button>
+        <button class="quick-pill hover:text-emerald-400 bg-slate-800/70 border border-slate-700 px-2.5 py-1 rounded-full transition" data-name="Ibuprofen">Ibuprofen (7 in stock)</button>
+        <button class="quick-pill hover:text-red-400 bg-slate-800/70 border border-slate-700 px-2.5 py-1 rounded-full transition" data-name="Insulin">Insulin (0 in stock)</button>
+        <button class="quick-pill hover:text-emerald-400 bg-slate-800/70 border border-slate-700 px-2.5 py-1 rounded-full transition" data-name="Azithromycin">Azithromycin (4 in stock)</button>
+      </div>
+    </div>
+
+    <!-- Details View Container -->
+    <div id="drug-detail-view" class="w-full max-w-4xl hidden space-y-6">
+      
+      <!-- Drug Header Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-6">
+          <div>
+            <div class="flex flex-wrap items-center gap-2.5 mb-2">
+              <span id="detail-category" class="px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 uppercase tracking-wider">
+                Category
+              </span>
+              <span id="detail-form" class="px-3 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                Formulation
+              </span>
+            </div>
+            <h2 id="detail-name" class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Drug Brand Name</h2>
+            <p id="detail-generic" class="text-sm sm:text-base text-slate-400 font-mono mt-0.5">Generic Name</p>
+          </div>
+
+          <!-- Total Stock Badge Large -->
+          <div id="detail-stock-badge" class="flex sm:flex-col items-center sm:items-end justify-between p-4 sm:p-0 rounded-2xl bg-slate-800/40 sm:bg-transparent">
+            <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Available Units</span>
+            <div id="detail-stock-number" class="text-3xl sm:text-4xl font-extrabold text-emerald-400">
+              10
+            </div>
+          </div>
+        </div>
+
+        <!-- Humanitarian FEFO Expiry Breakdown Table -->
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-base font-semibold text-white flex items-center gap-2">
+                <span>Unit Expiration Timeline</span>
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">FEFO Sorted</span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-0.5">Dispensations must prioritize batches with the earliest expiry.</p>
+            </div>
+            <span id="stock-units-count" class="text-xs text-slate-400">10 Total Units</span>
+          </div>
+
+          <!-- Table Container -->
+          <div class="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/50">
+            <table class="w-full text-left text-sm text-slate-300">
+              <thead class="text-xs uppercase bg-slate-800/60 text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th scope="col" class="px-4 py-3">Unit #</th>
+                  <th scope="col" class="px-4 py-3">Lot Code</th>
+                  <th scope="col" class="px-4 py-3">Expiration Date</th>
+                  <th scope="col" class="px-4 py-3">Days Remaining</th>
+                  <th scope="col" class="px-4 py-3 text-right">Dispatch Priority</th>
+                </tr>
+              </thead>
+              <tbody id="expiry-table-body" class="divide-y divide-slate-800/60">
+                <!-- Dynamically generated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live openFDA Metadata Section -->
+      <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-800/80">
+          <div class="flex items-center gap-2.5">
+            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+            <h3 class="text-lg font-bold text-white">openFDA Regulatory Monograph</h3>
+          </div>
+          <span id="fda-status" class="text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 font-mono">
+            Fetching FDA Label...
+          </span>
+        </div>
+
+        <div id="fda-content" class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+          <!-- Dynamically Populated with FDA Data -->
+          <div class="animate-pulse space-y-4 col-span-2">
+            <div class="h-4 bg-slate-800 rounded w-1/3"></div>
+            <div class="h-20 bg-slate-800/50 rounded"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Empty State Guide -->
+    <div id="empty-state" class="text-center py-16 px-4">
+      <div class="w-16 h-16 rounded-3xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-4 text-slate-500">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+        </svg>
+      </div>
+      <p class="text-slate-400 font-medium">Type a medicine name above or pick a sample drug</p>
+      <p class="text-xs text-slate-600 mt-1">Typo-tolerant fuzzy searching catches misspelled entries automatically.</p>
+    </div>
+
+  </main>
+
+  <!-- Script Logic -->
+  <script>
+    // 1. Curated Humanitarian Stock Catalog
+    // Includes available stocks (e.g. 10, 7, 4) and zero-stock items (0) for demonstration
+    const DRUG_DATABASE = [
+      {
+        id: "med-1",
+        name: "Amoxicillin",
+        generic_name: "Amoxicillin Trihydrate",
+        brand_names: ["Amoxil", "Trimox"],
+        category: "Antibacterial",
+        dosage_form: "500mg Oral Capsule",
+        stock: 10
+      },
+      {
+        id: "med-2",
+        name: "Ibuprofen",
+        generic_name: "Ibuprofen",
+        brand_names: ["Advil", "Motrin"],
+        category: "Analgesic / NSAID",
+        dosage_form: "400mg Film-Coated Tablet",
+        stock: 7
+      },
+      {
+        id: "med-3",
+        name: "Insulin Regular",
+        generic_name: "Insulin Human",
+        brand_names: ["Humulin R", "Novolin R"],
+        category: "Antidiabetic",
+        dosage_form: "100 units/mL Vial",
+        stock: 0 // Zero stock demonstration
+      },
+      {
+        id: "med-4",
+        name: "Azithromycin",
+        generic_name: "Azithromycin",
+        brand_names: ["Zithromax", "Z-Pak"],
+        category: "Macrolide Antibiotic",
+        dosage_form: "250mg Tablet",
+        stock: 4
+      },
+      {
+        id: "med-5",
+        name: "Metformin",
+        generic_name: "Metformin Hydrochloride",
+        brand_names: ["Glucophage"],
+        category: "Antidiabetic",
+        dosage_form: "850mg Tablet",
+        stock: 12
+      },
+      {
+        id: "med-6",
+        name: "Lisinopril",
+        generic_name: "Lisinopril",
+        brand_names: ["Prinivil", "Zestril"],
+        category: "Antihypertensive (ACE)",
+        dosage_form: "10mg Tablet",
+        stock: 0 // Zero stock demonstration
+      },
+      {
+        id: "med-7",
+        name: "Albuterol Inhaler",
+        generic_name: "Albuterol Sulfate",
+        brand_names: ["Ventolin", "ProAir"],
+        category: "Bronchodilator (Asthma)",
+        dosage_form: "90mcg Metered Aerosol",
+        stock: 5
+      },
+      {
+        id: "med-8",
+        name: "Paracetamol",
+        generic_name: "Acetaminophen",
+        brand_names: ["Tylenol", "Panadol"],
+        category: "Analgesic / Antipyretic",
+        dosage_form: "500mg Tablet",
+        stock: 15
+      },
+      {
+        id: "med-9",
+        name: "Omeprazole",
+        generic_name: "Omeprazole Magnesium",
+        brand_names: ["Prilosec"],
+        category: "Proton Pump Inhibitor",
+        dosage_form: "20mg Delayed-Release",
+        stock: 8
+      },
+      {
+        id: "med-10",
+        name: "Ciprofloxacin",
+        generic_name: "Ciprofloxacin",
+        brand_names: ["Cipro"],
+        category: "Fluoroquinolone Antibiotic",
+        dosage_form: "500mg Tablet",
+        stock: 0 // Zero stock demonstration
+      }
+    ];
+
+    // 2. Configure Fuse.js for Typo-Tolerant Search
+    const fuse = new Fuse(DRUG_DATABASE, {
+      keys: [
+        { name: 'name', weight: 0.5 },
+        { name: 'generic_name', weight: 0.3 },
+        { name: 'brand_names', weight: 0.2 },
+        { name: 'category', weight: 0.1 }
+      ],
+      threshold: 0.4, // Allows typos (e.g. "amoxcilin", "ibprofen")
+      distance: 100,
+      ignoreLocation: true
+    });
+
+    // DOM Elements
+    const searchInput = document.getElementById('drug-search-input');
+    const searchDropdown = document.getElementById('search-dropdown');
+    const clearSearchBtn = document.getElementById('clear-search-btn');
+    const drugDetailView = document.getElementById('drug-detail-view');
+    const emptyState = document.getElementById('empty-state');
+
+    // Detail View Elements
+    const detailName = document.getElementById('detail-name');
+    const detailGeneric = document.getElementById('detail-generic');
+    const detailCategory = document.getElementById('detail-category');
+    const detailForm = document.getElementById('detail-form');
+    const detailStockNumber = document.getElementById('detail-stock-number');
+    const stockUnitsCount = document.getElementById('stock-units-count');
+    const expiryTableBody = document.getElementById('expiry-table-body');
+    const fdaStatus = document.getElementById('fda-status');
+    const fdaContent = document.getElementById('fda-content');
+
+    // 3. Search Event Handlers
+    searchInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim();
+      if (query.length > 0) {
+        clearSearchBtn.classList.remove('hidden');
+        const results = fuse.search(query);
+        renderDropdown(results.map(r => r.item));
+      } else {
+        clearSearchBtn.classList.add('hidden');
+        searchDropdown.classList.add('hidden');
+      }
+    });
+
+    clearSearchBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      clearSearchBtn.classList.add('hidden');
+      searchDropdown.classList.add('hidden');
+      searchInput.focus();
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.classList.add('hidden');
+      }
+    });
+
+    // Suggested Pills Click
+    document.querySelectorAll('.quick-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const drugName = btn.getAttribute('data-name');
+        searchInput.value = drugName;
+        const matches = fuse.search(drugName);
+        if (matches.length > 0) {
+          selectDrug(matches[0].item);
+        }
+      });
+    });
+
+    // 4. Render Dropdown with Stock Badges
+    function renderDropdown(items) {
+      if (items.length === 0) {
+        searchDropdown.innerHTML = `
+          <div class="px-5 py-4 text-sm text-slate-400 flex items-center justify-between">
+            <span>No matching medicine found.</span>
+            <span class="text-xs text-slate-500">Check spelling or generic name</span>
+          </div>
+        `;
+        searchDropdown.classList.remove('hidden');
+        return;
+      }
+
+      searchDropdown.innerHTML = items.map((drug) => {
+        const isOutOfStock = drug.stock === 0;
+        
+        // Green badge for available stock, Red circle for zero stock
+        const stockBadge = isOutOfStock
+          ? `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-red-500/20 border border-red-500/40 text-red-400 font-bold text-xs" title="Out of Stock">
+               0
+             </span>`
+          : `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-semibold text-xs">
+               <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+               ${drug.stock} in stock
+             </span>`;
+
+        return `
+          <div 
+            class="dropdown-item px-5 py-3.5 hover:bg-slate-800/80 cursor-pointer flex items-center justify-between transition group"
+            data-id="${drug.id}"
+          >
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-white group-hover:text-emerald-400 transition">${drug.name}</span>
+                <span class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">${drug.category}</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5">${drug.generic_name} • <span class="text-slate-500">${drug.dosage_form}</span></p>
+            </div>
+            <div>
+              ${stockBadge}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      searchDropdown.classList.remove('hidden');
+
+      // Add click listener to each result row
+      document.querySelectorAll('.dropdown-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.getAttribute('data-id');
+          const drug = DRUG_DATABASE.find(d => d.id === id);
+          if (drug) {
+            selectDrug(drug);
+            searchDropdown.classList.add('hidden');
+          }
+        });
+      });
+    }
+
+    // 5. Select Drug & Populate Detail View
+    function selectDrug(drug) {
+      emptyState.classList.add('hidden');
+      drugDetailView.classList.remove('hidden');
+
+      // Populate Header
+      detailName.textContent = drug.name;
+      detailGeneric.textContent = `Generic: ${drug.generic_name} (${drug.brand_names.join(', ')})`;
+      detailCategory.textContent = drug.category;
+      detailForm.textContent = drug.dosage_form;
+
+      // Populate Stock Indicator
+      if (drug.stock === 0) {
+        detailStockNumber.innerHTML = `<span class="text-red-400 flex items-center gap-2">
+          <span class="w-3 h-3 rounded-full bg-red-500"></span> 0 (Out of Stock)
+        </span>`;
+        stockUnitsCount.textContent = "0 Units Available";
+      } else {
+        detailStockNumber.innerHTML = `<span class="text-emerald-400">${drug.stock}</span>`;
+        stockUnitsCount.textContent = `${drug.stock} Total Units Logged`;
+      }
+
+      // Generate FEFO Expiration Dates Table
+      generateExpirationTable(drug.stock);
+
+      // Fetch Live Metadata from openFDA
+      fetchFDAMonograph(drug);
+
+      // Smooth scroll to details
+      drugDetailView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // 6. Generate Unit Expiration Dates (FEFO Logic)
+    function generateExpirationTable(totalUnits) {
+      if (totalUnits === 0) {
+        expiryTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" class="px-4 py-8 text-center text-slate-400 bg-slate-900/40">
+              <div class="inline-flex items-center gap-2 text-red-400 font-semibold mb-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+                Zero stock in storage
+              </div>
+              <p class="text-xs text-slate-500">This medication has been placed on the donor procurement queue.</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      // Generate discrete units with random staggered expiration dates
+      const now = new Date();
+      const units = [];
+
+      for (let i = 1; i <= totalUnits; i++) {
+        // Random days in future: staggered between 25 days and 600 days
+        const daysForward = Math.floor(25 + (i * 45) + (Math.random() * 30));
+        const expDate = new Date(now.getTime() + (daysForward * 24 * 60 * 60 * 1000));
+        const lotNumber = `LOT-${expDate.getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+        units.push({
+          unitNumber: i,
+          lot: lotNumber,
+          date: expDate,
+          daysLeft: daysForward
+        });
+      }
+
+      // Sort by FEFO (First Expired, First Out)
+      units.sort((a, b) => a.date - b.date);
+
+      // Render Rows
+      expiryTableBody.innerHTML = units.map((u, index) => {
+        let statusBadge = "";
+        let rowClass = "hover:bg-slate-800/40 transition";
+
+        if (u.daysLeft <= 45) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-red-500/20 text-red-300 border border-red-500/30">Priority 1 (Urgent)</span>`;
+          rowClass += " bg-red-500/5";
+        } else if (u.daysLeft <= 90) {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">Priority 2 (Soon)</span>`;
+        } else {
+          statusBadge = `<span class="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Normal Shelf-life</span>`;
+        }
+
+        const formattedDate = u.date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+
+        return `
+          <tr class="${rowClass}">
+            <td class="px-4 py-3.5 font-mono text-xs text-slate-400">#${String(u.unitNumber).padStart(2, '0')}</td>
+            <td class="px-4 py-3.5 font-mono font-medium text-white">${u.lot}</td>
+            <td class="px-4 py-3.5 text-slate-200 font-medium">${formattedDate}</td>
+            <td class="px-4 py-3.5">
+              <span class="font-mono text-xs ${u.daysLeft <= 45 ? 'text-red-400 font-bold' : u.daysLeft <= 90 ? 'text-amber-400' : 'text-slate-300'}">
+                ${u.daysLeft} days
+              </span>
+            </td>
+            <td class="px-4 py-3.5 text-right">
+              ${statusBadge}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // 7. Live openFDA API Fetching
+    async function fetchFDAMonograph(drug) {
+      fdaStatus.textContent = "Connecting to openFDA API...";
+      fdaStatus.className = "text-xs px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 font-mono";
+      fdaContent.innerHTML = `
+        <div class="col-span-2 py-8 text-center text-slate-400">
+          <div class="inline-block w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-2"></div>
+          <p class="text-xs">Querying FDA Labeling Database for ${drug.generic_name}...</p>
+        </div>
+      `;
+
+      try {
+        const queryTerm = encodeURIComponent(drug.name.split(' ')[0]);
+        const url = `https://api.fda.gov/drug/label.json?search=openfda.brand_name:"${queryTerm}"+openfda.generic_name:"${queryTerm}"&limit=1`;
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error("No specific FDA monograph found for this query");
+        }
+
+        const data = await response.json();
+        const label = data.results && data.results[0] ? data.results[0] : null;
+
+        if (!label) throw new Error("Empty label structure returned");
+
+        fdaStatus.textContent = "FDA Official Verified";
+        fdaStatus.className = "text-xs px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 font-mono border border-emerald-500/20";
+
+        // Extract key sections safely
+        const brand = (label.openfda && label.openfda.brand_name) ? label.openfda.brand_name[0] : drug.name;
+        const manufacturer = (label.openfda && label.openfda.manufacturer_name) ? label.openfda.manufacturer_name[0] : "Authorized US / International Manufacturer";
+        const route = (label.openfda && label.openfda.route) ? label.openfda.route.join(', ') : "Oral / Parenteral";
+        const pharmClass = (label.openfda && label.openfda.pharm_class_epc) ? label.openfda.pharm_class_epc[0] : drug.category;
+        
+        const indications = label.indications_and_usage ? label.indications_and_usage[0].slice(0, 320) + "..." : "Standard therapeutic usage indicated for patient care under clinical supervision.";
+        const warnings = label.warnings ? label.warnings[0].slice(0, 280) + "..." : (label.boxed_warning ? label.boxed_warning[0].slice(0, 280) + "..." : "Follow physician prescription. Store in a cool, dry place away from children.");
+        const storage = label.storage_and_handling ? label.storage_and_handling[0].slice(0, 200) + "..." : "Store at 20°C to 25°C (68°F to 77°F); excursions permitted between 15°C and 30°C.";
+
+        fdaContent.innerHTML = `
+          <!-- Left Column -->
+          <div class="space-y-4">
+            <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Indications & Usage</h4>
+              <p class="text-slate-300 text-xs leading-relaxed">${indications}</p>
+            </div>
+
+            <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+              <h4 class="text-xs font-semibold text-red-400 uppercase tracking-wider mb-1">Clinical Warnings & Precautions</h4>
+              <p class="text-slate-300 text-xs leading-relaxed">${warnings}</p>
+            </div>
+          </div>
+
+          <!-- Right Column -->
+          <div class="space-y-4">
+            <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+              <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Storage & Handling</h4>
+              <p class="text-slate-300 text-xs leading-relaxed">${storage}</p>
+            </div>
+
+            <div class="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span class="text-slate-500 block">Manufacturer/Sponsor</span>
+                <span class="text-white font-medium">${manufacturer}</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block">Administration Route</span>
+                <span class="text-white font-medium">${route}</span>
+              </div>
+              <div class="col-span-2 pt-2 border-t border-slate-800">
+                <span class="text-slate-500 block">Pharmacologic Class</span>
+                <span class="text-emerald-400 font-medium">${pharmClass}</span>
+              </div>
+            </div>
+          </div>
+        `;
+
+      } catch (err) {
+        // Fallback info if openFDA is unreachable or rate limited
+        fdaStatus.textContent = "Local Clinical Reference";
+        fdaStatus.className = "text-xs px-2.5 py-1 rounded-md bg-slate-800 text-slate-400 font-mono";
+
+        fdaContent.innerHTML = `
+          <div class="col-span-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-2 text-slate-400 text-xs mb-2">
+              <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span>External FDA connection skipped; presenting humanitarian master data.</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              <strong>${drug.name} (${drug.generic_name})</strong> is registered in the organization's essential medication dispensary. It belongs to the <strong>${drug.category}</strong> class in formulation <strong>${drug.dosage_form}</strong>. Always cross-reference the physical packaging for lot numbers and contraindications prior to handing to patients.
+            </p>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>
